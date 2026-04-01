@@ -109,14 +109,19 @@ ${COLORES.negrita}Columnas de la planilla:${COLORES.reset}
 // ─── Google Sheets ─────────────────────────────────────────────────────────────
 
 async function crearClienteSheets() {
-  const credPath = path.resolve(CONFIG.sheets.credentialsPath);
-  if (!fs.existsSync(credPath)) {
-    throw new Error(`No se encontró el archivo de credenciales: ${credPath}\nCopiá credentials.json de tu Service Account de Google.`);
+  const authOpts = { scopes: ['https://www.googleapis.com/auth/spreadsheets'] };
+
+  if (process.env.GOOGLE_CREDENTIALS_JSON) {
+    authOpts.credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+  } else {
+    const credPath = path.resolve(CONFIG.sheets.credentialsPath);
+    if (!fs.existsSync(credPath)) {
+      throw new Error(`No se encontró el archivo de credenciales: ${credPath}\nCopiá credentials.json de tu Service Account de Google.`);
+    }
+    authOpts.keyFile = credPath;
   }
-  const auth = new google.auth.GoogleAuth({
-    keyFile: credPath,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
+
+  const auth = new google.auth.GoogleAuth(authOpts);
   const client = await auth.getClient();
   return google.sheets({ version: 'v4', auth: client });
 }
@@ -585,7 +590,9 @@ async function procesarTramites(filas, opts, sheets) {
   const browser = await puppeteer.launch({
     headless: CONFIG.browser.headless,
     slowMo: CONFIG.browser.slowMo,
-    executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    executablePath: fs.existsSync('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
+      ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+      : undefined,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
