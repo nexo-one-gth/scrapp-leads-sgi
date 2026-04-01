@@ -1,0 +1,24 @@
+{
+  "name": "sgi-scraper",
+  "version": "1.0.0",
+  "description": "Scraper de trámites SGI Swiss Medical → Google Sheets",
+  "main": "scraper.js",
+  "scripts": {
+    "start": "node scraper.js",
+    "test": "node scraper.js --test",
+    "help": "node scraper.js --help",
+    "dashboard": "node dashboard/server.js",
+    "check": "node verificar-config.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "googleapis": "^144.0.0",
+    "puppeteer": "^22.15.0",
+    "socket.io": "^4.6.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "UNLICENSED"
+}

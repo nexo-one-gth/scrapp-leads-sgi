@@ -1,0 +1,32 @@
+# Dependencias
+node_modules/
+package-lock.json
+
+# Variables de entorno y credenciales
+.env
+credentials.json
+
+# Archivos de debug
+debug-*.png
+debug-*.json
+debug-*.txt
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema operativo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

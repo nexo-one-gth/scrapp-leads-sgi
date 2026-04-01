@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGI Scraper Dashboard</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1e40af;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --info: #3b82f6;
+      --bg: #0f172a;
+      --bg-card: #1e293b;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      padding: 2rem;
+      border-radius: 1rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 1rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      border: 1px solid var(--border);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .card-title {
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .card-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .card-icon {
+      font-size: 1.5rem;
+    }
+
+    .stat-success { color: var(--success); }
+    .stat-danger { color: var(--danger); }
+    .stat-warning { color: var(--warning); }
+    .stat-info { color: var(--info); }
+
+    .controls {
+      background: var(--bg-card);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border: 1px solid var(--border);
+    }
+
+    .controls-header {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .control-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .form-group {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    select, input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      color: var(--text);
+      font-size: 1rem;
+      transition: border-color 0.2s;
+    }
+
+    select:focus, input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    button {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: #dc2626;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .status-running {
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+      border: 1px solid var(--success);
+    }
+
+    .status-stopped {
+      background: rgba(148, 163, 184, 0.2);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .status-error {
+      background: rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+      border: 1px solid var(--danger);
+    }
+
+    .status-completed {
+      background: rgba(59, 130, 246, 0.2);
+      color: var(--info);
+      border: 1px solid var(--info);
+    }
+
+    .logs-container {
+      background: var(--bg-card);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      border: 1px solid var(--border);
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .logs-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logs-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .btn-clear {
+      padding: 0.5rem 1rem;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      font-size: 0.875rem;
+    }
+
+    .btn-clear:hover {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .logs {
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+      line-height: 1.8;
+    }
+
+    .log-entry {
+      padding: 0.5rem;
+      border-radius: 0.25rem;
+      margin-bottom: 0.25rem;
+      display: flex;
+      gap: 0.5rem;
+      word-break: break-word;
+    }
+
+    .log-timestamp {
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .log-info {
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    .log-error {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+    }
+
+    .log-warning {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--warning);
+    }
+
+    .pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: .5;
+      }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    ::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+      border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🖥️ SGI Scraper Dashboard</h1>
+      <p class="subtitle">Monitoreo y control en tiempo real</p>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Estado</span>
+          <span class="card-icon">⚙️</span>
+        </div>
+        <span id="statusBadge" class="status-badge status-stopped">Detenido</span>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Exitosos</span>
+          <span class="card-icon">✅</span>
+        </div>
+        <div class="card-value stat-success" id="exitosos">0</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Fallidos</span>
+          <span class="card-icon">❌</span>
+        </div>
+        <div class="card-value stat-danger" id="fallidos">0</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Saltados</span>
+          <span class="card-icon">⏭️</span>
+        </div>
+        <div class="card-value stat-warning" id="saltados">0</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="controls-header">⚡ Controles</div>
+      <div class="control-row">
+        <div class="form-group">
+          <label for="mode">Modo de ejecución</label>
+          <select id="mode">
+            <option value="all">Todos los trámites</option>
+            <option value="test">Modo Test (1 trámite)</option>
+            <option value="row">Fila específica</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="rowGroup" style="display: none;">
+          <label for="row">Número de fila</label>
+          <input type="number" id="row" min="2" placeholder="Ej: 5">
+        </div>
+
+        <button id="startBtn" class="btn-primary" onclick="iniciar()">
+          ▶️ Iniciar
+        </button>
+
+        <button id="stopBtn" class="btn-danger" onclick="detener()" disabled>
+          ⏹️ Detener
+        </button>
+      </div>
+    </div>
+
+    <div class="logs-container">
+      <div class="logs-header">
+        <span class="logs-title">📋 Logs en tiempo real</span>
+        <button class="btn-clear" onclick="limpiarLogs()">🗑️ Limpiar</button>
+      </div>
+      <div id="logs" class="logs">
+        <div class="empty-state">
+          <div class="empty-state-icon">📭</div>
+          <div>No hay logs disponibles</div>
+          <div style="font-size: 0.875rem; margin-top: 0.5rem;">Inicia el scraper para ver los logs</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    let autoscroll = true;
+
+    // Elementos del DOM
+    const statusBadge = document.getElementById('statusBadge');
+    const exitososEl = document.getElementById('exitosos');
+    const fallidosEl = document.getElementById('fallidos');
+    const saltadosEl = document.getElementById('saltados');
+    const logsEl = document.getElementById('logs');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const modeSelect = document.getElementById('mode');
+    const rowGroup = document.getElementById('rowGroup');
+
+    // Mostrar/ocultar campo de fila
+    modeSelect.addEventListener('change', () => {
+      rowGroup.style.display = modeSelect.value === 'row' ? 'block' : 'none';
+    });
+
+    // WebSocket events
+    socket.on('status', (stats) => {
+      actualizarEstado(stats);
+    });
+
+    socket.on('log', (log) => {
+      agregarLog(log);
+    });
+
+    // Funciones
+    function actualizarEstado(stats) {
+      exitososEl.textContent = stats.exitosos;
+      fallidosEl.textContent = stats.fallidos;
+      saltadosEl.textContent = stats.saltados;
+
+      const estados = {
+        'ejecutando': { clase: 'status-running', texto: 'Ejecutando', pulso: true },
+        'detenido': { clase: 'status-stopped', texto: 'Detenido', pulso: false },
+        'completado': { clase: 'status-completed', texto: 'Completado', pulso: false },
+        'error': { clase: 'status-error', texto: 'Error', pulso: false }
+      };
+
+      const estado = estados[stats.estado] || estados.detenido;
+      statusBadge.className = `status-badge ${estado.clase}${estado.pulso ? ' pulse' : ''}`;
+      statusBadge.textContent = estado.texto;
+
+      startBtn.disabled = stats.estado === 'ejecutando';
+      stopBtn.disabled = stats.estado !== 'ejecutando';
+    }
+
+    function agregarLog(log) {
+      // Remover empty state si existe
+      const emptyState = logsEl.querySelector('.empty-state');
+      if (emptyState) {
+        logsEl.innerHTML = '';
+      }
+
+      const logEntry = document.createElement('div');
+      logEntry.className = `log-entry log-${log.tipo}`;
+      logEntry.innerHTML = `
+        <span class="log-timestamp">[${log.timestamp}]</span>
+        <span>${escapeHtml(log.mensaje)}</span>
+      `;
+
+      logsEl.appendChild(logEntry);
+
+      // Autoscroll
+      if (autoscroll) {
+        logsEl.scrollTop = logsEl.scrollHeight;
+      }
+    }
+
+    function escapeHtml(text) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    async function iniciar() {
+      const mode = modeSelect.value;
+      const row = document.getElementById('row').value;
+
+      const body = { mode };
+      if (mode === 'row' && row) {
+        body.row = parseInt(row);
+      }
+
+      try {
+        const res = await fetch('/api/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.error);
+        }
+      } catch (err) {
+        alert('Error al iniciar el scraper: ' + err.message);
+      }
+    }
+
+    async function detener() {
+      if (!confirm('¿Estás seguro de detener el scraper?')) return;
+
+      try {
+        const res = await fetch('/api/stop', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.error);
+        }
+      } catch (err) {
+        alert('Error al detener el scraper: ' + err.message);
+      }
+    }
+
+    function limpiarLogs() {
+      logsEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div>Logs limpiados</div></div>';
+    }
+
+    // Cargar estado inicial
+    fetch('/api/status')
+      .then(res => res.json())
+      .then(stats => actualizarEstado(stats));
+  </script>
+</body>
+</html>
